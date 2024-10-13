@@ -125,6 +125,10 @@ panic(char *s)
 
 //PAGEBREAK: 50
 #define BACKSPACE 0x100
+#define UP_ARROW 226
+#define DOWN_ARROW 227
+#define LEFT_ARROW 228
+#define RIGHT_ARROW 229
 #define CRTPORT 0x3d4
 static ushort *crt = (ushort*)P2V(0xb8000);  // CGA memory
 
@@ -184,6 +188,7 @@ struct {
   uint r;  // Read index
   uint w;  // Write index
   uint e;  // Edit index
+  uint c;  // Cursor index
 } input;
 
 #define C(x)  ((x)-'@')  // Control-x
@@ -208,18 +213,37 @@ consoleintr(int (*getc)(void))
       }
       break;
     case C('H'): case '\x7f':  // Backspace
-      if(input.e != input.w){
+      // if(input.e != input.w){
+      if(input.c != input.w){
+        // input.e--;
+        for(uint i = input.c--; i != input.e ; i++)
+          input.buf[(i - 1) % INPUT_BUF] = input.buf[i % INPUT_BUF];
         input.e--;
         consputc(BACKSPACE);
       }
       break;
+    case LEFT_ARROW:
+      if(input.c != input.w)
+        input.c--;
+      break;
+    case RIGHT_ARROW:
+      if(input.c != input.e)
+        input.c++;
+      break;
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
         c = (c == '\r') ? '\n' : c;
-        input.buf[input.e++ % INPUT_BUF] = c;
+        // input.buf[input.e++ % INPUT_BUF] = c;
+        if(c != '\n'){
+          for(uint i = input.e++; i != input.c ; i--)
+            input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
+          input.buf[input.c++ % INPUT_BUF] = c;
+        } else
+          input.buf[input.e++ % INPUT_BUF] = c;
         consputc(c);
         if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
           input.w = input.e;
+          input.c = input.e;
           wakeup(&input.r);
         }
       }
