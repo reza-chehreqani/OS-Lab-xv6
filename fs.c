@@ -183,6 +183,7 @@ iinit(int dev)
  inodestart %d bmap start %d\n", sb.size, sb.nblocks,
           sb.ninodes, sb.nlog, sb.logstart, sb.inodestart,
           sb.bmapstart);
+  cprintf("Amir Naddaf | Mostafa Kermaninia | Reza Chehreghani\n");
 }
 
 static struct inode* iget(uint dev, uint inum);
