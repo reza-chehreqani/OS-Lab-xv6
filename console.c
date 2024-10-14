@@ -132,10 +132,20 @@ panic(char *s)
 #define CRTPORT 0x3d4
 static ushort *crt = (ushort*)P2V(0xb8000);  // CGA memory
 
+#define INPUT_BUF 128
+struct {
+  char buf[INPUT_BUF];
+  uint r;  // Read index
+  uint w;  // Write index
+  uint e;  // Edit index
+  uint c;  // Cursor index
+} input;
+
 static void
 cgaputc(int c)
 {
   int pos;
+  int rst = input.e - input.c;
 
   // Cursor position: col + 80*row.
   outb(CRTPORT, 14);
@@ -146,9 +156,18 @@ cgaputc(int c)
   if(c == '\n')
     pos += 80 - pos%80;
   else if(c == BACKSPACE){
+    if(pos > 0){
+      memmove(crt+pos-1, crt+pos, sizeof(crt[0])*rst);
+      crt[--pos + rst] = ' ' | 0x0700;
+    }
+  } else if(c == LEFT_ARROW){
     if(pos > 0) --pos;
-  } else
+  } else if(c == RIGHT_ARROW){
+    if(pos < 25*80-1) ++pos;
+  } else {
+    memmove(crt+pos+1, crt+pos, sizeof(crt[0])*rst);
     crt[pos++] = (c&0xff) | 0x0700;  // black on white
+  }
 
   if(pos < 0 || pos > 25*80)
     panic("pos under/overflow");
@@ -163,7 +182,7 @@ cgaputc(int c)
   outb(CRTPORT+1, pos>>8);
   outb(CRTPORT, 15);
   outb(CRTPORT+1, pos);
-  crt[pos] = ' ' | 0x0700;
+  crt[pos] = crt[pos] | 0x0700;
 }
 
 void
@@ -181,15 +200,6 @@ consputc(int c)
     uartputc(c);
   cgaputc(c);
 }
-
-#define INPUT_BUF 128
-struct {
-  char buf[INPUT_BUF];
-  uint r;  // Read index
-  uint w;  // Write index
-  uint e;  // Edit index
-  uint c;  // Cursor index
-} input;
 
 #define C(x)  ((x)-'@')  // Control-x
 
@@ -223,12 +233,16 @@ consoleintr(int (*getc)(void))
       }
       break;
     case LEFT_ARROW:
-      if(input.c != input.w)
+      if(input.c != input.w){
         input.c--;
+        consputc(LEFT_ARROW);
+      }
       break;
     case RIGHT_ARROW:
-      if(input.c != input.e)
+      if(input.c != input.e){
         input.c++;
+        consputc(RIGHT_ARROW);
+      }
       break;
     default:
       if(c != 0 && input.e-input.r < INPUT_BUF){
