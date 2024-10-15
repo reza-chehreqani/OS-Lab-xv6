@@ -146,7 +146,7 @@ struct
   uint c; // Cursor index
 } input, copy_input, buf_history[MAX_INDEX_HISTORY];
 
-int command_index = 0;
+int command_index = -1;
 int num_saved_commands = 0;
 
 static void
@@ -274,13 +274,26 @@ void consoleintr(int (*getc)(void))
       }
       break;
     case UP_ARROW:
-      if (command_index < num_saved_commands)
+      if (command_index < num_saved_commands - 1)
       {
+        command_index++;
         input.c = input.e;
         for (uint i = input.e; i != input.w; i--)
           consputc(BACKSPACE);
         input = buf_history[command_index];
-        command_index++;
+        for (uint i = input.w; i != input.e; i++)
+          if (input.buf[i] != '\n')
+            consputc(input.buf[i]);
+      }
+      break;
+    case DOWN_ARROW:
+      if (command_index > 0)
+      {
+        command_index--;
+        input.c = input.e;
+        for (uint i = input.e; i != input.w; i--)
+          consputc(BACKSPACE);
+        input = buf_history[command_index];
         for (uint i = input.w; i != input.e; i++)
           if (input.buf[i] != '\n')
             consputc(input.buf[i]);
@@ -304,12 +317,12 @@ void consoleintr(int (*getc)(void))
         {
           copy_input = input;
           copy_input.e--;
-          command_index = 0;
+          command_index = -1;
           input.w = input.e;
           input.c = input.e;
           wakeup(&input.r);
         }
-        if (c == '\n')
+        if (c == '\n' && copy_input.e - copy_input.w != 0)
         {
           for (int i = 9; i > 0; i--)
           {
