@@ -133,6 +133,7 @@ void panic(char *s)
 #define LEFT_ARROW 228
 #define RIGHT_ARROW 229
 #define CRTPORT 0x3d4
+#define MAX_INDEX_HISTORY 10
 static ushort *crt = (ushort *)P2V(0xb8000); // CGA memory
 
 #define INPUT_BUF 128
@@ -143,7 +144,10 @@ struct
   uint w; // Write index
   uint e; // Edit index
   uint c; // Cursor index
-} input, copy_input, buf_history[10];
+} input, copy_input, buf_history[MAX_INDEX_HISTORY];
+
+int command_index = 0;
+int num_saved_commands = 0;
 
 static void
 cgaputc(int c)
@@ -269,6 +273,19 @@ void consoleintr(int (*getc)(void))
         consputc(RIGHT_ARROW);
       }
       break;
+    case UP_ARROW:
+      if (command_index < num_saved_commands)
+      {
+        input.c = input.e;
+        for (uint i = input.e; i != input.w; i--)
+          consputc(BACKSPACE);
+        input = buf_history[command_index];
+        command_index++;
+        for (uint i = input.w; i != input.e; i++)
+          if (input.buf[i] != '\n')
+            consputc(input.buf[i]);
+      }
+      break;
     default:
       if (c != 0 && input.e - input.r < INPUT_BUF)
       {
@@ -286,17 +303,21 @@ void consoleintr(int (*getc)(void))
         if (c == '\n' || c == C('D') || input.e == input.r + INPUT_BUF)
         {
           copy_input = input;
+          copy_input.e--;
+          command_index = 0;
           input.w = input.e;
           input.c = input.e;
           wakeup(&input.r);
         }
         if (c == '\n')
         {
-          for (int i = 0; i < 9; i++)
+          for (int i = 9; i > 0; i--)
           {
-            buf_history[i + 1] = buf_history[i];
+            buf_history[i] = buf_history[i - 1];
           }
           buf_history[0] = copy_input;
+          if (num_saved_commands < MAX_INDEX_HISTORY)
+            num_saved_commands++;
         }
       }
       break;
