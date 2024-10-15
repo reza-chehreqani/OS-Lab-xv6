@@ -231,6 +231,57 @@ void consputc(int c)
 
 #define C(x) ((x) - '@') // Control-x
 
+void calculator(int s_index, int end_index, char op, int op_index)
+{
+  //need to be fixed for neg answers
+  int num1 = 0, num2 = 0, ans;
+  for (int i = s_index; i < op_index; i++)
+    num1 = num1 * 10 + input.buf[i % INPUT_BUF] - 48;
+  for (int i = op_index + 1; i < end_index; i++)
+    num2 = num2 * 10 + input.buf[i % INPUT_BUF] - 48;
+  switch (op)
+  {
+  case '%':
+    ans = num1 % num2;
+    break;
+  case '-':
+    ans = num1 - num2;
+    break;
+  case '+':
+    ans = num1 + num2;
+    break;
+  case '/':
+    ans = num1 / num2;
+    break;
+  case '*':
+    ans = num1 * num2;
+    break;
+  default:
+    break;
+  }
+  for (int j = end_index + 1; j > s_index; j--)
+  {
+    for (uint i = input.c--; i != input.e; i++)
+      input.buf[(i - 1) % INPUT_BUF] = input.buf[i % INPUT_BUF];
+    input.e--;
+    consputc(BACKSPACE);
+  }
+  int num_digits = 0;
+  do
+  {
+    num_digits++;
+    int a = ans % 10 + 48;
+    ans /= 10;
+    for (uint i = input.e++; i != input.c; i--)
+      input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
+    input.buf[input.c++ % INPUT_BUF] = a;
+  } while (ans != 0);
+  for (int i = 0; i < num_digits; i++)
+  {
+    consputc(input.buf[(i + s_index) % INPUT_BUF]);
+  }
+}
+
 void consoleintr(int (*getc)(void))
 {
   int c, doprocdump = 0;
@@ -287,8 +338,8 @@ void consoleintr(int (*getc)(void))
           consputc(BACKSPACE);
         input = buf_history[command_index];
         for (uint i = input.w; i != input.e; i++)
-          if (input.buf[i] != '\n')
-            consputc(input.buf[i]);
+          if (input.buf[i % INPUT_BUF] != '\n')
+            consputc(input.buf[i % INPUT_BUF]);
       }
       break;
     case DOWN_ARROW:
@@ -300,8 +351,8 @@ void consoleintr(int (*getc)(void))
           consputc(BACKSPACE);
         input = buf_history[command_index];
         for (uint i = input.w; i != input.e; i++)
-          if (input.buf[i] != '\n')
-            consputc(input.buf[i]);
+          if (input.buf[i % INPUT_BUF] != '\n')
+            consputc(input.buf[i % INPUT_BUF]);
       }
       break;
     case C('S'):
@@ -316,9 +367,6 @@ void consoleintr(int (*getc)(void))
       if (is_copying == 1)
       {
         is_copying = 0;
-      }
-      else
-      {
         for (int j = 0; j < cs_size; j++)
         {
           if (copied_string[j] != '\n')
@@ -334,6 +382,44 @@ void consoleintr(int (*getc)(void))
       }
 
       break;
+    case '?':
+      //doesn't work when the ? was in buffer before
+      int isnt_exp = 0;
+      int i = input.c - 1;
+      if (input.buf[i % INPUT_BUF] == '=')
+      {
+        i--;
+        if (0 <= (int)input.buf[i % INPUT_BUF] - 48 && (int)input.buf[i % INPUT_BUF] - 48 < 10)
+        {
+          int flag = 0;
+          while (0 <= (int)input.buf[i % INPUT_BUF] - 48 && (int)input.buf[i % INPUT_BUF] - 48 < 10)
+          {
+            i--;
+          }
+          if (i == input.e - 2)
+            flag = 1;
+          char op = input.buf[i % INPUT_BUF];
+          if (op == '%' || op == '+' || op == '-' || op == '*' || op == '/')
+            i--;
+          else
+            flag = 1;
+          int op_index = i + 1;
+          while (0 <= (int)input.buf[i % INPUT_BUF] - 48 && (int)input.buf[i % INPUT_BUF] - 48 < 10)
+          {
+            i--;
+          }
+          if (i == op_index - 1)
+            flag = 1;
+          if (flag == 1)
+            isnt_exp = 1;
+          if (isnt_exp == 0)
+          {
+            calculator(i + 1, input.c - 1, op, op_index);
+            break;
+          }
+        }
+      }
+
     default:
       if (c != 0 && input.e - input.r < INPUT_BUF)
       {
