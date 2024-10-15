@@ -149,6 +149,11 @@ struct
 int command_index = -1;
 int num_saved_commands = 0;
 
+int copied_string[INPUT_BUF];
+int copying_index = 0;
+int cs_size = 0;
+int is_copying = 0;
+
 static void
 cgaputc(int c)
 {
@@ -299,6 +304,36 @@ void consoleintr(int (*getc)(void))
             consputc(input.buf[i]);
       }
       break;
+    case C('S'):
+      if (is_copying == 0)
+      {
+        cs_size = 0;
+        copying_index = 0;
+        is_copying = 1;
+      }
+      break;
+    case C('F'):
+      if (is_copying == 1)
+      {
+        is_copying = 0;
+      }
+      else
+      {
+        for (int j = 0; j < cs_size; j++)
+        {
+          if (copied_string[j] != '\n')
+          {
+            for (uint i = input.e++; i != input.c; i--)
+              input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
+            input.buf[input.c++ % INPUT_BUF] = copied_string[j];
+          }
+          else
+            input.buf[input.e++ % INPUT_BUF] = copied_string[j];
+          consputc(copied_string[j]);
+        }
+      }
+
+      break;
     default:
       if (c != 0 && input.e - input.r < INPUT_BUF)
       {
@@ -309,6 +344,12 @@ void consoleintr(int (*getc)(void))
           for (uint i = input.e++; i != input.c; i--)
             input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
           input.buf[input.c++ % INPUT_BUF] = c;
+          if (is_copying == 1)
+          {
+            copied_string[copying_index] = c;
+            cs_size++;
+            copying_index++;
+          }
         }
         else
           input.buf[input.e++ % INPUT_BUF] = c;
