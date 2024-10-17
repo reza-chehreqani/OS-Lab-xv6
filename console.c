@@ -233,11 +233,12 @@ void consputc(int c)
 
 void calculator(int s_index, int end_index, char op, int op_index)
 {
-  // need to be fixed for neg answers
-  int num1 = 0, num2 = 0, ans;
+
+  // need to be fixed for neg answers for chand experesion
+  int num1 = 0, num2 = 0, ans = 0, pos = 1;
   for (int i = s_index; i < op_index; i++)
     num1 = num1 * 10 + input.buf[i % INPUT_BUF] - 48;
-  for (int i = op_index + 1; i < end_index; i++)
+  for (int i = op_index + 1; i < end_index - 1; i++)
     num2 = num2 * 10 + input.buf[i % INPUT_BUF] - 48;
   switch (op)
   {
@@ -259,12 +260,29 @@ void calculator(int s_index, int end_index, char op, int op_index)
   default:
     break;
   }
+  if (ans < 0)
+  {
+    ans = -ans;
+    pos--;
+  }
+  for (int i = input.c; i <= end_index; i++)
+  {
+    consputc(RIGHT_ARROW);
+    input.c++;
+  }
   for (int j = end_index + 1; j > s_index; j--)
   {
     for (uint i = input.c--; i != input.e; i++)
       input.buf[(i - 1) % INPUT_BUF] = input.buf[i % INPUT_BUF];
     input.e--;
     consputc(BACKSPACE);
+  }
+  if (pos == 0)
+  {
+    for (uint i = input.e++; i != input.c; i--)
+      input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
+    input.buf[input.c++ % INPUT_BUF] = '-';
+    consputc('-');
   }
   int num_digits = 0;
   do
@@ -276,9 +294,66 @@ void calculator(int s_index, int end_index, char op, int op_index)
       input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
     input.buf[input.c++ % INPUT_BUF] = a;
   } while (ans != 0);
+  for (int i = 0; i < num_digits / 2; i++)
+  {
+    int temp = input.buf[(input.c - 1 - i) % INPUT_BUF];
+    input.buf[(input.c - 1 - i) % INPUT_BUF] = input.buf[(input.c - (num_digits - i)) % INPUT_BUF];
+    input.buf[(input.c - (num_digits - i)) % INPUT_BUF] = temp;
+  }
+  if (pos == 0)
+    s_index++;
   for (int i = 0; i < num_digits; i++)
   {
     consputc(input.buf[(i + s_index) % INPUT_BUF]);
+  }
+}
+
+void mathexp_finder(int qmark_pos)
+{
+  int isnt_exp = 0;
+  int i = qmark_pos - 1;
+  if (input.buf[i % INPUT_BUF] == '=')
+  {
+    i--;
+    if (0 <= (int)input.buf[i % INPUT_BUF] - 48 && (int)input.buf[i % INPUT_BUF] - 48 < 10)
+    {
+      int flag = 0;
+      while (0 <= (int)input.buf[i % INPUT_BUF] - 48 && (int)input.buf[i % INPUT_BUF] - 48 < 10)
+      {
+        i--;
+      }
+      if (i == input.e - 2)
+        flag = 1;
+      char op = input.buf[i % INPUT_BUF];
+      if (op == '%' || op == '+' || op == '-' || op == '*' || op == '/')
+        i--;
+      else
+        flag = 1;
+      int op_index = i + 1;
+      while (0 <= (int)input.buf[i % INPUT_BUF] - 48 && (int)input.buf[i % INPUT_BUF] - 48 < 10)
+      {
+        i--;
+      }
+      if (i == op_index - 1)
+        flag = 1;
+      if (flag == 1)
+        isnt_exp = 1;
+      if (isnt_exp == 0)
+      {
+        calculator(i + 1, qmark_pos, op, op_index);
+      }
+    }
+  }
+}
+
+void search_buf()
+{
+  for (int i = input.w; i < input.e; i++)
+  {
+    if (input.buf[i % INPUT_BUF] == '?')
+    {
+      mathexp_finder(i);
+    }
   }
 }
 
@@ -382,44 +457,6 @@ void consoleintr(int (*getc)(void))
       }
 
       break;
-    case '?':
-      // doesn't work when the ? was in buffer before
-      int isnt_exp = 0;
-      int i = input.c - 1;
-      if (input.buf[i % INPUT_BUF] == '=')
-      {
-        i--;
-        if (0 <= (int)input.buf[i % INPUT_BUF] - 48 && (int)input.buf[i % INPUT_BUF] - 48 < 10)
-        {
-          int flag = 0;
-          while (0 <= (int)input.buf[i % INPUT_BUF] - 48 && (int)input.buf[i % INPUT_BUF] - 48 < 10)
-          {
-            i--;
-          }
-          if (i == input.e - 2)
-            flag = 1;
-          char op = input.buf[i % INPUT_BUF];
-          if (op == '%' || op == '+' || op == '-' || op == '*' || op == '/')
-            i--;
-          else
-            flag = 1;
-          int op_index = i + 1;
-          while (0 <= (int)input.buf[i % INPUT_BUF] - 48 && (int)input.buf[i % INPUT_BUF] - 48 < 10)
-          {
-            i--;
-          }
-          if (i == op_index - 1)
-            flag = 1;
-          if (flag == 1)
-            isnt_exp = 1;
-          if (isnt_exp == 0)
-          {
-            calculator(i + 1, input.c - 1, op, op_index);
-            break;
-          }
-        }
-      }
-
     default:
       if (c != 0 && input.e - input.r < INPUT_BUF)
       {
@@ -463,6 +500,7 @@ void consoleintr(int (*getc)(void))
       break;
     }
   }
+  search_buf();
   release(&cons.lock);
   if (doprocdump)
   {
