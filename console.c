@@ -235,6 +235,13 @@ void calculator(int s_index, int end_index, char op, int op_index)
 {
 
   // need to be fixed for neg answers for chand experesion
+  int bias = input.c - end_index - 1;
+  if (bias > 0)
+    while (input.c != end_index + 1)
+    {
+      consputc(LEFT_ARROW);
+      input.c--;
+    }
   int num1 = 0, num2 = 0, ans = 0, pos = 1;
   for (int i = s_index; i < op_index; i++)
     num1 = num1 * 10 + input.buf[i % INPUT_BUF] - 48;
@@ -305,6 +312,12 @@ void calculator(int s_index, int end_index, char op, int op_index)
   for (int i = 0; i < num_digits; i++)
   {
     consputc(input.buf[(i + s_index) % INPUT_BUF]);
+  }
+  while (bias > 0)
+  {
+    consputc(RIGHT_ARROW);
+    input.c++;
+    bias--;
   }
 }
 
