@@ -11,7 +11,16 @@
 #define LIST  4
 #define BACK  5
 
-#define MAXARGS 10
+#define MAXARGS 11
+
+#define HISTORY_SIZE 11     // Number of commands to store
+#define CMD_LENGTH 100      // Maximum length of each command
+
+struct {
+  char buf[HISTORY_SIZE][CMD_LENGTH];
+  uint count;
+  uint index;
+} history;
 
 struct cmd {
   int type;
@@ -75,6 +84,11 @@ runcmd(struct cmd *cmd)
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0)
       exit();
+
+    if(strcmp(ecmd->argv[0], "history") == 0)
+      for(uint i=0; i<history.count-1; i++)
+        ecmd->argv[i+1]=history.buf[(history.index-history.count+i) % HISTORY_SIZE];
+
     exec(ecmd->argv[0], ecmd->argv);
     printf(2, "exec %s failed\n", ecmd->argv[0]);
     break;
@@ -144,7 +158,7 @@ getcmd(char *buf, int nbuf)
 int
 main(void)
 {
-  static char buf[100];
+  static char buf[CMD_LENGTH];
   int fd;
 
   // Ensure that three file descriptors are open.
@@ -157,6 +171,12 @@ main(void)
 
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
+    if(strlen(buf)>1){
+      strcpy(history.buf[history.index++ % HISTORY_SIZE], buf);
+      if(history.count < HISTORY_SIZE)
+          history.count++;
+    }
+
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
       // Chdir must be called by the parent, not the child.
       buf[strlen(buf)-1] = 0;  // chop \n
