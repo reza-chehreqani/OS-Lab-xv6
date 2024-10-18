@@ -462,8 +462,8 @@ void consoleintr(int (*getc)(void))
       }
       break;
     case C('F'):
-      if (is_copying == 1)
-      {
+      // if (is_copying == 1)
+      // {
         is_copying = 0;
         for (int j = 0; j < cs_size; j++)
         {
@@ -477,7 +477,7 @@ void consoleintr(int (*getc)(void))
             input.buf[input.e++ % INPUT_BUF] = copied_string[j];
           consputc(copied_string[j]);
         }
-      }
+      // }
 
       break;
     default:
