@@ -402,6 +402,12 @@ void consoleintr(int (*getc)(void))
         input.e--;
         consputc(BACKSPACE);
       }
+      if (is_copying == 1 && copying_index > 0)
+      {
+        for (uint i = copying_index--; i != cs_size; i++)
+          copied_string[i - 1] = copied_string[i];
+        cs_size--;
+      }
       break;
     case LEFT_ARROW:
       if (input.c != input.w)
@@ -409,6 +415,8 @@ void consoleintr(int (*getc)(void))
         input.c--;
         consputc(LEFT_ARROW);
       }
+      if (is_copying == 1 && copying_index > 0)
+        copying_index--;
       break;
     case RIGHT_ARROW:
       if (input.c != input.e)
@@ -416,6 +424,8 @@ void consoleintr(int (*getc)(void))
         input.c++;
         consputc(RIGHT_ARROW);
       }
+      if (is_copying == 1 && copying_index < cs_size)
+        copying_index++;
       break;
     case UP_ARROW:
       if (command_index < num_saved_commands - 1)
@@ -452,8 +462,8 @@ void consoleintr(int (*getc)(void))
       }
       break;
     case C('F'):
-      if (is_copying == 1)
-      {
+      // if (is_copying == 1)
+      // {
         is_copying = 0;
         for (int j = 0; j < cs_size; j++)
         {
@@ -467,7 +477,7 @@ void consoleintr(int (*getc)(void))
             input.buf[input.e++ % INPUT_BUF] = copied_string[j];
           consputc(copied_string[j]);
         }
-      }
+      // }
 
       break;
     default:
@@ -482,9 +492,12 @@ void consoleintr(int (*getc)(void))
           input.buf[input.c++ % INPUT_BUF] = c;
           if (is_copying == 1)
           {
-            copied_string[copying_index] = c;
-            cs_size++;
-            copying_index++;
+            for (uint i = cs_size++; i != copying_index; i--)
+              copied_string[i] = copied_string[i - 1];
+            copied_string[copying_index++] = c;
+            // copied_string[copying_index] = c;
+            // cs_size++;
+            // copying_index++;
           }
         }
         else
