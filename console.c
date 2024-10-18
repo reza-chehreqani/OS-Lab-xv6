@@ -233,16 +233,8 @@ void consputc(int c)
 
 void calculator(int s_index, int end_index, char op, int op_index)
 {
-
-  // need to be fixed for neg answers for chand experesion
-  int bias = input.c - end_index - 1;
-  if (bias > 0)
-    while (input.c != end_index + 1)
-    {
-      consputc(LEFT_ARROW);
-      input.c--;
-    }
-  int num1 = 0, num2 = 0, ans = 0, pos = 1;
+  int num1 = 0, num2 = 0, pos = 1, fraction = 0, int_ans = 0;
+  int f_ans = 0, less_than1 = 0;
   for (int i = s_index; i < op_index; i++)
     num1 = num1 * 10 + input.buf[i % INPUT_BUF] - 48;
   for (int i = op_index + 1; i < end_index - 1; i++)
@@ -250,28 +242,48 @@ void calculator(int s_index, int end_index, char op, int op_index)
   switch (op)
   {
   case '%':
-    ans = num1 % num2;
+    f_ans = num1 % num2;
     break;
   case '-':
-    ans = num1 - num2;
+    f_ans = num1 - num2;
     break;
   case '+':
-    ans = num1 + num2;
+    f_ans = num1 + num2;
     break;
   case '/':
-    ans = num1 / num2;
+    f_ans = (10 * num1) / num2;
+    int_ans = num1 / num2;
     break;
   case '*':
-    ans = num1 * num2;
+    f_ans = num1 * num2;
     break;
   default:
     break;
   }
-  if (ans < 0)
+  if (op == '/')
   {
-    ans = -ans;
+    if (f_ans != 10 * int_ans)
+    {
+      fraction = 1;
+      int_ans = f_ans;
+      if (int_ans < 10)
+        less_than1 = 1;
+    }
+  }
+  else
+    int_ans = f_ans;
+  if (int_ans < 0)
+  {
+    int_ans = -int_ans;
     pos--;
   }
+  int bias = input.c - end_index - 1;
+  if (bias > 0)
+    while (input.c != end_index + 1)
+    {
+      consputc(LEFT_ARROW);
+      input.c--;
+    }
   for (int i = input.c; i <= end_index; i++)
   {
     consputc(RIGHT_ARROW);
@@ -295,12 +307,27 @@ void calculator(int s_index, int end_index, char op, int op_index)
   do
   {
     num_digits++;
-    int a = ans % 10 + 48;
-    ans /= 10;
+    int a = int_ans % 10 + 48;
+    int_ans /= 10;
     for (uint i = input.e++; i != input.c; i--)
       input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
-    input.buf[input.c++ % INPUT_BUF] = a;
-  } while (ans != 0);
+    if (fraction == 1 && num_digits > 1)
+    {
+      fraction = 0;
+      int_ans *= 10;
+      int_ans += a - 48;
+      input.buf[input.c++ % INPUT_BUF] = (int)'.';
+    }
+    else if (less_than1 == 1 && int_ans == 0 && a == (int)'0')
+    {
+      less_than1 = 0;
+      input.buf[input.c++ % INPUT_BUF] = (int)'0';
+    }
+    else
+      input.buf[input.c++ % INPUT_BUF] = a;
+
+  } while (int_ans != 0 || less_than1);
+
   for (int i = 0; i < num_digits / 2; i++)
   {
     int temp = input.buf[(input.c - 1 - i) % INPUT_BUF];
@@ -464,19 +491,19 @@ void consoleintr(int (*getc)(void))
     case C('F'):
       // if (is_copying == 1)
       // {
-        is_copying = 0;
-        for (int j = 0; j < cs_size; j++)
+      is_copying = 0;
+      for (int j = 0; j < cs_size; j++)
+      {
+        if (copied_string[j] != '\n')
         {
-          if (copied_string[j] != '\n')
-          {
-            for (uint i = input.e++; i != input.c; i--)
-              input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
-            input.buf[input.c++ % INPUT_BUF] = copied_string[j];
-          }
-          else
-            input.buf[input.e++ % INPUT_BUF] = copied_string[j];
-          consputc(copied_string[j]);
+          for (uint i = input.e++; i != input.c; i--)
+            input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
+          input.buf[input.c++ % INPUT_BUF] = copied_string[j];
         }
+        else
+          input.buf[input.e++ % INPUT_BUF] = copied_string[j];
+        consputc(copied_string[j]);
+      }
       // }
 
       break;
