@@ -411,9 +411,15 @@ void consoleintr(int (*getc)(void))
       doprocdump = 1;
       break;
     case C('U'): // Kill line.
+      while (input.c != input.e)
+      {
+        input.c++;
+        consputc(RIGHT_ARROW);
+      }
       while (input.e != input.w &&
              input.buf[(input.e - 1) % INPUT_BUF] != '\n')
       {
+        input.c--;
         input.e--;
         consputc(BACKSPACE);
       }
