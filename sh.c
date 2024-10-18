@@ -86,8 +86,8 @@ runcmd(struct cmd *cmd)
       exit();
 
     if(strcmp(ecmd->argv[0], "history") == 0)
-      for(uint i=0; i<history.count-1; i++)
-        ecmd->argv[i+1]=history.buf[(history.index-history.count+i) % HISTORY_SIZE];
+      for(uint i=1; i<history.count; i++)
+        ecmd->argv[i]=history.buf[(history.index-i-1) % HISTORY_SIZE];
 
     exec(ecmd->argv[0], ecmd->argv);
     printf(2, "exec %s failed\n", ecmd->argv[0]);
