@@ -458,7 +458,11 @@ void consoleintr(int (*getc)(void))
       if (command_index < num_saved_commands - 1)
       {
         command_index++;
-        input.c = input.e;
+        while (input.c != input.e)
+        {
+          input.c++;
+          consputc(RIGHT_ARROW);
+        }
         for (uint i = input.e; i != input.w; i--)
           consputc(BACKSPACE);
         input = buf_history[command_index];
@@ -471,7 +475,11 @@ void consoleintr(int (*getc)(void))
       if (command_index > 0)
       {
         command_index--;
-        input.c = input.e;
+        while (input.c != input.e)
+        {
+          input.c++;
+          consputc(RIGHT_ARROW);
+        }
         for (uint i = input.e; i != input.w; i--)
           consputc(BACKSPACE);
         input = buf_history[command_index];
@@ -545,6 +553,7 @@ void consoleintr(int (*getc)(void))
           {
             buf_history[i] = buf_history[i - 1];
           }
+          copy_input.c = copy_input.e;
           buf_history[0] = copy_input;
           if (num_saved_commands < MAX_INDEX_HISTORY)
             num_saved_commands++;
