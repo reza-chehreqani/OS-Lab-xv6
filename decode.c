@@ -8,7 +8,7 @@ char uc_alphabet[26] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', '
 char lc_alphabet[26] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
                         'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'};
 
-char *encode(char *c)
+char *decode(char *c)
 {
     // key = (40 + 75 + 1) mod 26 = 12
     int key = 12;
@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
         printf(1, "Couldn't open the file");
     for (int i = 1; i < argc; i++)
     {
-        char *c = encode(argv[i]);
+        char *c = decode(argv[i]);
         write(fd, c, strlen(argv[i]));
         if (i != argc - 1)
             write(fd, " ", 1);
