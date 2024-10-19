@@ -149,9 +149,7 @@ struct
 int command_index = -1;
 int num_saved_commands = 0;
 
-int copied_string[INPUT_BUF];
 int copying_index = 0;
-int cs_size = 0;
 int is_copying = 0;
 
 static void
@@ -435,12 +433,6 @@ void consoleintr(int (*getc)(void))
         input.e--;
         consputc(BACKSPACE);
       }
-      if (is_copying == 1 && copying_index > 0)
-      {
-        for (uint i = copying_index--; i != cs_size; i++)
-          copied_string[i - 1] = copied_string[i];
-        cs_size--;
-      }
       break;
     case LEFT_ARROW:
       if (input.c != input.w)
@@ -448,8 +440,6 @@ void consoleintr(int (*getc)(void))
         input.c--;
         consputc(LEFT_ARROW);
       }
-      if (is_copying == 1 && copying_index > 0)
-        copying_index--;
       break;
     case RIGHT_ARROW:
       if (input.c != input.e)
@@ -457,8 +447,6 @@ void consoleintr(int (*getc)(void))
         input.c++;
         consputc(RIGHT_ARROW);
       }
-      if (is_copying == 1 && copying_index < cs_size)
-        copying_index++;
       break;
     case UP_ARROW:
       if (command_index < num_saved_commands - 1)
@@ -497,28 +485,28 @@ void consoleintr(int (*getc)(void))
     case C('S'):
       if (is_copying == 0)
       {
-        cs_size = 0;
-        copying_index = 0;
+        copying_index = input.c;
         is_copying = 1;
       }
       break;
     case C('F'):
-      // if (is_copying == 1)
-      // {
-      is_copying = 0;
-      for (int j = 0; j < cs_size; j++)
+      if (is_copying == 1)
       {
-        if (copied_string[j] != '\n')
+        is_copying = 0;
+        int end_index = input.c;
+        for (int j = copying_index; j < end_index; j++)
         {
-          for (uint i = input.e++; i != input.c; i--)
-            input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
-          input.buf[input.c++ % INPUT_BUF] = copied_string[j];
+          if (input.buf[j % INPUT_BUF] != '\n')
+          {
+            for (uint i = input.e++; i != input.c; i--)
+              input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
+            input.buf[input.c++ % INPUT_BUF] = input.buf[j % INPUT_BUF];
+          }
+          else
+            input.buf[input.e++ % INPUT_BUF] = input.buf[j % INPUT_BUF];
+          consputc(input.buf[j % INPUT_BUF]);
         }
-        else
-          input.buf[input.e++ % INPUT_BUF] = copied_string[j];
-        consputc(copied_string[j]);
       }
-      // }
 
       break;
     default:
@@ -531,15 +519,6 @@ void consoleintr(int (*getc)(void))
           for (uint i = input.e++; i != input.c; i--)
             input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
           input.buf[input.c++ % INPUT_BUF] = c;
-          if (is_copying == 1)
-          {
-            for (uint i = cs_size++; i != copying_index; i--)
-              copied_string[i] = copied_string[i - 1];
-            copied_string[copying_index++] = c;
-            // copied_string[copying_index] = c;
-            // cs_size++;
-            // copying_index++;
-          }
         }
         else
           input.buf[input.e++ % INPUT_BUF] = c;
