@@ -421,6 +421,8 @@ void consoleintr(int (*getc)(void))
         input.e--;
         consputc(BACKSPACE);
       }
+      if (is_copying == 1)
+        copying_index = 0;
       break;
     case C('H'):
     case '\x7f': // Backspace
@@ -428,6 +430,8 @@ void consoleintr(int (*getc)(void))
       if (input.c != input.w)
       {
         // input.e--;
+        if (is_copying == 1 && copying_index > input.c)
+          copying_index--;
         for (uint i = input.c--; i != input.e; i++)
           input.buf[(i - 1) % INPUT_BUF] = input.buf[i % INPUT_BUF];
         input.e--;
@@ -519,6 +523,8 @@ void consoleintr(int (*getc)(void))
           for (uint i = input.e++; i != input.c; i--)
             input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
           input.buf[input.c++ % INPUT_BUF] = c;
+          if (is_copying == 1 && copying_index >= input.c)
+            copying_index++;
         }
         else
           input.buf[input.e++ % INPUT_BUF] = c;
